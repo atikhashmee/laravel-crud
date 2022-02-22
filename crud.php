@@ -1,5 +1,5 @@
 <?php
-namespace App\Http;
+namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -12,26 +12,37 @@ trait Crud {
      */
     public function index(Request $request)
     {
-        $itemSql = $this->model::select('*');
+        $modelObj = new $this->model();
+        $data = [];
+        $itemSql = $this->model::select($modelObj->getTable().'.*');
         if ($request->search) {
             foreach ($request->search as $field => $val)
             $itemSql->where($field, "LIKE", "%".$val."%");
-        }
-
-        if ($request->filter) {
-            foreach ($request->filter as $field => $val)
-            $itemSql->where($field,  $val);
         }
 
         if ($request->sort) {
             foreach ($request->sort as $orderOf => $orderBy)
             $itemSql->orderBy($orderOf, $orderBy);
         }
-        
-        $data['items'] = !empty($this->pagination) ? $itemSql->paginate(intval($this->pagination)) : $itemSql->get();
+
+        if ($request->showing) {
+            $this->pagination = $request->showing;
+        }
+        if (method_exists($this, 'indexQuery')) {
+            $itemSql = $this->indexQuery($request, $itemSql);
+        }
+
         if ($request->ajax()) {
+            if ($request->hasHeader('no-pagination')) {
+                $data['items'] = $itemSql->get();
+            } else {
+                $data['items'] = $itemSql->paginate(10);
+            }
             return response(['status'=> true, 'data' => $data]);
         }
+
+        $data['items'] = !empty($this->pagination) ? $itemSql->paginate(intval($this->pagination)) : $itemSql->get();
+        
         return view($this->view_index, $data);
     }
 
@@ -147,13 +158,10 @@ trait Crud {
         }
 
         try {
-            $modelCreated = $this->model::where('id', $id)->update($request->except('_method', '_token'));
+            $modelCreated = $this->model::where('id', $id)->update($request->except('_method', '_token', 'festival'));
             if ($modelCreated) {
                 if ($request->ajax()) {
                     return response()->json(['status' => true, 'data'=> $modelCreated]);
-                }
-                if (method_exists($this, 'updatedRedirectTo')) {
-                    return $this->updatedRedirectTo();
                 }
                 return redirect()->back()->withSuccess('Data has been Updated');
             }
