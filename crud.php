@@ -163,6 +163,9 @@ trait Crud {
                 if ($request->ajax()) {
                     return response()->json(['status' => true, 'data'=> $modelCreated]);
                 }
+                if (method_exists($this, 'updatedRedirectTo')) {
+                    return $this->updatedRedirectTo();
+                }
                 return redirect()->back()->withSuccess('Data has been Updated');
             }
         } catch (\Exception $e) {
