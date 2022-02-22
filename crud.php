@@ -19,6 +19,11 @@ trait Crud {
             foreach ($request->search as $field => $val)
             $itemSql->where($field, "LIKE", "%".$val."%");
         }
+        
+        if ($request->filter) {
+            foreach ($request->filter as $field => $val)
+            $itemSql->where($field,  $val);
+        }
 
         if ($request->sort) {
             foreach ($request->sort as $orderOf => $orderBy)
